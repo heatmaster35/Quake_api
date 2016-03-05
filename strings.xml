@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FindRestaurant</string>
+    <string name="location">detect location</string>
+</resources>
