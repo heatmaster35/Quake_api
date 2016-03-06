@@ -1,15 +1,12 @@
-package com.example.shobhit.findrestaurant.response;
+package com.example.bearquake.bearquakes.response;
+
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
 /**
- * Created by leogo_000 on 3/2/2016.
+ * Created by Otto on 3/6/2016.
  */
-//-----------------------------------com.example.Example.java-----------------------------------
-
-//@Generated("org.jsonschema2pojo")
-public class Example {
-
+public class quakeResponse {
     @SerializedName("response")
     @Expose
     private Integer response;
