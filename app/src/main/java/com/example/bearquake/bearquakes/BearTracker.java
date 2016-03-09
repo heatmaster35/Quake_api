@@ -30,6 +30,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 
@@ -45,7 +46,7 @@ import retrofit2.http.Query;
 
 
 public class BearTracker extends AppCompatActivity implements OnMapReadyCallback,GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, LocationListener{
+        GoogleApiClient.OnConnectionFailedListener, LocationListener {
     public static String LOG_TAG = "Quakes";
     //Need all this stuff to functionally begin creating api calls and getting responses
     private GoogleMap mMap;
@@ -63,17 +64,19 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         //Build the api client
+        getquakes();
         buildGoogleApiClient();
         //Begin location requests
         createLocationRequest();
+
     }
 
     //Controls the camera movement of google maps, when the map loads, it will move to your current location.
-    private void initCamera( Location location ) {
+    private void initCamera(Location location) {
         CameraPosition position = CameraPosition.builder()
-                .target( new LatLng( location.getLatitude(), location.getLongitude() ) )
-                .zoom( 16f )
-                .bearing( 0.0f )
+                .target(new LatLng(location.getLatitude(), location.getLongitude()))
+                .zoom(16f)
+                .bearing(0.0f)
                 .tilt(0.0f)
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(position), null);
@@ -86,6 +89,7 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
         }
         mMap.getUiSettings().setZoomControlsEnabled(true);
     }
+
     //Build the google maps API
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -108,14 +112,16 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
         super.onStart();
         mGoogleApiClient.connect();
     }
+
     //On stop, disconnect from it
     @Override
     public void onStop() {
         super.onStop();
-        if( mGoogleApiClient != null && mGoogleApiClient.isConnected() ) {
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();
         }
     }
+
     //Self explanatory, getting all the location request information regarding frequency, and
     //intervals at which locations will be procured and updated
     protected void createLocationRequest() {
@@ -124,6 +130,7 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
         mLocationRequest.setFastestInterval(5000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
+
     //What happens following the response of a permission request
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -137,6 +144,7 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
             }
         }
     }
+
     //What happens when we are connected to the API, basically we start location updates and
     // init camera
     @Override
@@ -153,6 +161,7 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
 
         }
     }
+
     //Begin grabbing location updates
     protected void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -162,8 +171,9 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onConnectionSuspended(int i) {}
-    
+    public void onConnectionSuspended(int i) {
+    }
+
     //Here is where we would try to set a default home location, we would ask them for a home
     //lat and lng before they start and if the app fails to get their location, it should default
     //to whatever they set.
@@ -171,9 +181,9 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
     public void onConnectionFailed(ConnectionResult connectionResult) {
         //Create a default location if the Google API Client fails. Placing location at Googleplex
         Log.e("issues", "we failed");
-        lastLocation = new Location( "" );
-        lastLocation.setLatitude( 167.422535 );
-        lastLocation.setLongitude( -122.084804 );
+        lastLocation = new Location("");
+        lastLocation.setLatitude(167.422535);
+        lastLocation.setLongitude(-122.084804);
         initCamera(lastLocation);
     }
 
@@ -235,8 +245,8 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
 
                     int count = response.body().get(0).getCount();
                     quakeResponse temp;
-                    for(int i = 0; i <= count; i++){
-                        if((i==0)&&(!Quakes.isEmpty())){
+                    for (int i = 0; i <= count; i++) {
+                        if ((i == 0) && (!Quakes.isEmpty())) {
                             Quakes.get(0).setCount(Quakes.get(0).getCount() +
                                     response.body().get(0).getCount());
                             continue;
@@ -284,19 +294,45 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
         });
 
     }
+
     //interface for the Query
     public interface Service {
         @GET("json")
         Call<ArrayList<quakeResponse>> registerQuake(@Query("id") int id,
-                                               @Query("title") String title,
-                                               @Query("link") String link,
-                                               @Query("source") String source,
-                                               @Query("north") double north,
-                                               @Query("west") double west,
-                                               @Query("lat") double lat,
-                                               @Query("lng") double lng,
-                                               @Query("depth") int depth,
-                                               @Query("mag") double time,
-                                               @Query("timestamp") int timestamp);
+                                                     @Query("title") String title,
+                                                     @Query("link") String link,
+                                                     @Query("source") String source,
+                                                     @Query("north") double north,
+                                                     @Query("west") double west,
+                                                     @Query("lat") double lat,
+                                                     @Query("lng") double lng,
+                                                     @Query("depth") int depth,
+                                                     @Query("mag") double time,
+                                                     @Query("timestamp") int timestamp);
+    }
+
+    public ArrayList<Double[]> PinPoints = new ArrayList<Double[]>();
+
+    //will get the next 10 quake locations and display them on the map
+    public void getBears(View v) {
+        //Double [] temp = new Double[4];
+        Log.i(LOG_TAG, "Quakes message: " + Quakes.get(0).getMessage());
+        int counter = 0;
+        while (counter < 10 && Quakes.get(0).getCount() >= 2) {
+            Log.i(LOG_TAG, "Quakes message: " + Quakes.get(counter).getLat() + ", " + Quakes.get(counter).getLng());
+            Double lat = Quakes.get(counter + 1).getLat();
+            Double lng = Quakes.get(counter+ 1).getLng();
+            Double mag = Quakes.get(counter + 1).getMag();
+            Double dep = Double.valueOf(Quakes.get(counter + 1).getDepth());
+            //code provided by https://developers.google.com/maps/documentation/android-api/marker#introduction
+            mMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(lat, lng))
+                    .title("Bear Level: " + Quakes.get(counter+1).getMag()));
+
+            Double[] temp = {lat, lng, mag, dep};
+            PinPoints.add(temp);
+            //Quakes.remove(1);
+            counter++;
+        }
     }
 }
