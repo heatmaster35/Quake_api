@@ -5,8 +5,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Point;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -15,6 +17,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Interpolator;
+import android.view.animation.LinearInterpolator;
+import android.os.Handler;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,12 +32,16 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+
+import java.util.logging.LogRecord;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -316,23 +325,79 @@ public class BearTracker extends AppCompatActivity implements OnMapReadyCallback
     //will get the next 10 quake locations and display them on the map
     public void getBears(View v) {
         //Double [] temp = new Double[4];
+        start = SystemClock.uptimeMillis();
         Log.i(LOG_TAG, "Quakes message: " + Quakes.get(0).getMessage());
         int counter = 0;
+        if(Quakes.get(0).getCount() == 0){
+            getquakes();
+        }
         while (counter < 10 && Quakes.get(0).getCount() >= 2) {
             Log.i(LOG_TAG, "Quakes message: " + Quakes.get(counter).getLat() + ", " + Quakes.get(counter).getLng());
-            Double lat = Quakes.get(counter + 1).getLat();
-            Double lng = Quakes.get(counter+ 1).getLng();
-            Double mag = Quakes.get(counter + 1).getMag();
-            Double dep = Double.valueOf(Quakes.get(counter + 1).getDepth());
+            Double lat = Quakes.get(1).getLat();
+            Double lng = Quakes.get(1).getLng();
+            Double mag = Quakes.get(1).getMag();
+            Double dep = Double.valueOf(Quakes.get(1).getDepth());
             //code provided by https://developers.google.com/maps/documentation/android-api/marker#introduction
-            mMap.addMarker(new MarkerOptions()
+            Marker temp2 = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(lat, lng))
-                    .title("Bear Level: " + Quakes.get(counter+1).getMag()));
+                    .title(Quakes.get(1).getTitle()));
+
+            LatLng what = new LatLng(lastLocation.getLatitude(),lastLocation.getLongitude());
+            Log.e("Error", " " + Quakes.get(1).getMag().longValue());
+            float tempLong = Quakes.get(1).getMag().floatValue();
+            animateMarker(temp2, what, false, tempLong);//, (Quakes.get(1).getMag().longValue()));
 
             Double[] temp = {lat, lng, mag, dep};
             PinPoints.add(temp);
-            //Quakes.remove(1);
+            Quakes.remove(1);
             counter++;
+            Quakes.get(0).setCount(Quakes.get(0).getCount() - 1);
         }
     }
+    public long start = 0;
+    //code animateMarker() was made by Sandeep Dhull
+    //link: http://stackoverflow.com/questions/13728041/move-markers-in-google-map-v2-android
+    ///--------------------------------------------------------------------------------------------
+
+    public void animateMarker(final Marker marker, final LatLng toPosition,
+                              final boolean hideMarker, final float magDuration){//, final long magDuration) {
+        final Handler handler = new Handler();
+        //final long start = SystemClock.uptimeMillis();
+        final Projection proj = mMap.getProjection();
+        final Point startPoint = proj.toScreenLocation(marker.getPosition());
+        final LatLng startLatLng = proj.fromScreenLocation(startPoint);
+        final float duration = 15000/magDuration;///magDuration;
+
+        final Interpolator interpolator = new LinearInterpolator();
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                long elapsed = SystemClock.uptimeMillis() - start;
+                float t = interpolator.getInterpolation((float) elapsed
+                        / duration);
+                Log.e("Log", "t is: " + t);
+                double lng = t * toPosition.longitude+ (1-t) * startLatLng.longitude; // + (1 - t); //* startLatLng.longitude;
+                double lat = t * toPosition.latitude + (1-t) * startLatLng.latitude; ;// + (1 - t); //* startLatLng.latitude;
+                marker.setPosition(new LatLng(lat, lng));
+                if(marker.getPosition().latitude == toPosition.latitude && marker.getPosition().longitude == toPosition.longitude){
+
+                }
+
+
+                if (t < 1.0) {
+                    // Post again 16ms later.
+                    handler.postDelayed(this, 16);
+                } else {
+                    if (hideMarker) {
+                        marker.setVisible(false);
+                    } else {
+                        marker.setVisible(true);
+                    }
+                }
+
+            }
+        });
+    }
+    //--------------------------------------------------------------------------------------------
 }
